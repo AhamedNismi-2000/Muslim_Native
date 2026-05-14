@@ -67,3 +67,22 @@ export const notificationLimiter: RateLimitRequestHandler = rateLimit({
   handler: rateLimitHandler,
 });
 
+// ── FCM Token Limiter ────────────────────────────────────
+// Applied to FCM token registration route
+export const fcmTokenLimiter: RateLimitRequestHandler = rateLimit({
+  windowMs: 60 * 60 * 1000,   // 1 hour
+  max: 10,                     // 10 token registrations per hour
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+});
+
+// ── Prayer Log Limiter ───────────────────────────────────
+// Applied to prayer marking routes
+export const prayerLogLimiter: RateLimitRequestHandler = rateLimit({
+  windowMs: 1 * 60 * 1000,    // 1 minute
+  max: 20,                     // 20 log updates per minute
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: rateLimitHandler,
+});
