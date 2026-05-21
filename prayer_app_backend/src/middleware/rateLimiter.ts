@@ -77,6 +77,7 @@ export const fcmTokenLimiter: RateLimitRequestHandler = rateLimit({
   handler: rateLimitHandler,
 });
 
+
 // ── Prayer Log Limiter ───────────────────────────────────
 // Applied to prayer marking routes
 export const prayerLogLimiter: RateLimitRequestHandler = rateLimit({
