@@ -147,3 +147,85 @@ export const asyncHandler = (
     fn(req, res, next).catch(next);
   };
 };
+
+
+// ── Global Error Handler ─────────────────────────────────
+// Must have 4 parameters for Express to recognize it as error middleware
+export const errorHandler = (
+  err: Error,
+  req: Request,
+  res: Response,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  next: NextFunction
+): void => {
+  let error = { ...err } as AppError;
+  error.message = err.message;
+  error.stack = err.stack;
+
+  // Set defaults
+  if (!error.statusCode) error.statusCode = 500;
+  if (!error.status) error.status = "error";
+  if (error.isOperational === undefined) error.isOperational = false;
+
+  // Log all errors in development
+  if (process.env.NODE_ENV === "development") {
+    console.error("─────────────────────────────────");
+    console.error(`${new Date().toISOString()}`);
+    console.error(`${req.method} ${req.originalUrl}`);
+    console.error(`Status: ${error.statusCode}`);
+    console.error(`Message: ${error.message}`);
+    console.error(`Stack: ${error.stack}`);
+    console.error("─────────────────────────────────");
+  }
+
+  // Map known error types to AppError
+  if (err instanceof mongoose.Error.CastError) {
+    error = handleCastError(err);
+  }
+
+  if (err instanceof mongoose.Error.ValidationError) {
+    error = handleValidationError(err);
+  }
+
+  if (
+    (err as mongoose.mongo.MongoServerError).code === 11000
+  ) {
+    error = handleDuplicateKeyError(
+      err as mongoose.mongo.MongoServerError
+    );
+  }
+
+  if (err.name === "JsonWebTokenError") {
+    error = handleJWTError();
+  }
+
+  if (err.name === "TokenExpiredError") {
+    error = handleJWTExpiredError();
+  }
+
+  // Send response
+  if (process.env.NODE_ENV === "development") {
+    sendDevError(error, res);
+  } else {
+    sendProdError(error, res);
+  }
+};
+
+// ── Common AppError Shortcuts ────────────────────────────
+export const BadRequest = (message: string, code?: string): AppError =>
+  new AppError(message, 400, code || "BAD_REQUEST");
+
+export const Unauthorized = (message: string, code?: string): AppError =>
+  new AppError(message, 401, code || "UNAUTHORIZED");
+
+export const Forbidden = (message: string, code?: string): AppError =>
+  new AppError(message, 403, code || "FORBIDDEN");
+
+export const NotFound = (message: string, code?: string): AppError =>
+  new AppError(message, 404, code || "NOT_FOUND");
+
+export const Conflict = (message: string, code?: string): AppError =>
+  new AppError(message, 409, code || "CONFLICT");
+
+export const InternalError = (message: string, code?: string): AppError =>
+  new AppError(message, 500, code || "INTERNAL_ERROR");
