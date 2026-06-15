@@ -11,6 +11,11 @@ import authRoutes from "./routes/auth.routes";
 import prayerRoutes from "./routes/prayer.routes";
 import userRoutes from "./routes/user.routes";
 import notificationRoutes from "./routes/notification.routes";
+import {
+  errorHandler,
+  notFoundHandler
+} from "./middleware/errorHandler";
+
 
 // Load env variables
 dotenv.config();
@@ -61,12 +66,8 @@ app.use("/api/v1/user", userRoutes);
 app.use("/api/v1/notifications", notificationRoutes);
 
 // ── 404 Handler ─────────────────────────────────────────
-app.use((req: Request, res: Response) => {
-  res.status(404).json({
-    success: false,
-    message: `Route ${req.originalUrl} not found`,
-  });
-});
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 // ── Global Error Handler ────────────────────────────────
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
