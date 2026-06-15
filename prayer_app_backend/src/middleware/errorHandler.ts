@@ -29,3 +29,50 @@ interface ErrorResponse {
   errors?: Record<string, string>;
   stack?: string;
 }
+
+// ── Handle Specific Error Types ──────────────────────────
+
+// MongoDB duplicate key error (e.g. duplicate email)
+const handleDuplicateKeyError = (
+  err: mongoose.mongo.MongoServerError
+): AppError => {
+  const field = Object.keys(err.keyValue || {})[0];
+  const value = err.keyValue?.[field];
+  const message = `${field} '${value}' already exists. Please use a different value.`;
+  return new AppError(message, 409, "DUPLICATE_KEY");
+};
+
+// Mongoose validation error
+const handleValidationError = (
+  err: mongoose.Error.ValidationError
+): AppError => {
+  const errors = Object.values(err.errors).map((el) => el.message);
+  const message = `Validation failed: ${errors.join(". ")}`;
+  return new AppError(message, 400, "VALIDATION_ERROR");
+};
+
+// Mongoose cast error (e.g. invalid ObjectId)
+const handleCastError = (
+  err: mongoose.Error.CastError
+): AppError => {
+  const message = `Invalid ${err.path}: '${err.value}' is not a valid ID.`;
+  return new AppError(message, 400, "INVALID_ID");
+};
+
+// JWT expired
+const handleJWTExpiredError = (): AppError => {
+  return new AppError(
+    "Your session has expired. Please login again.",
+    401,
+    "TOKEN_EXPIRED"
+  );
+};
+
+// JWT invalid
+const handleJWTError = (): AppError => {
+  return new AppError(
+    "Invalid token. Please login again.",
+    401,
+    "TOKEN_INVALID"
+  );
+};
