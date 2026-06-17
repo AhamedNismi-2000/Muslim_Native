@@ -187,3 +187,60 @@ export const login = asyncHandler(
     });
   }
 );
+
+// ── @desc   Login user
+// ── @route  POST /api/v1/auth/login
+// ── @access Public
+export const login = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { email, password, fcmToken } = req.body;
+
+    // 1. Validate input
+    if (!email || !password) {
+      throw BadRequest("Email and password are required.");
+    }
+
+    // 2. Find user with password included
+    const user = await User.findOne({ email: email.toLowerCase() }).select(
+      "+password"
+    );
+
+    if (!user) {
+      throw Unauthorized("Invalid email or password.");
+    }
+
+    // 3. Check account status
+    if (!user.isActive) {
+      throw Unauthorized(
+        "Your account has been deactivated. Please contact support."
+      );
+    }
+
+    // 4. Compare password
+    const isPasswordValid = await user.comparePassword(password);
+    if (!isPasswordValid) {
+      throw Unauthorized("Invalid email or password.");
+    }
+
+    // 5. Register FCM token if provided (for push notifications)
+    if (fcmToken) {
+      await user.addFcmToken(fcmToken);
+    }
+
+    // 6. Update last login
+    user.lastLogin = new Date();
+    await user.save();
+
+    // 7. Generate JWT
+    const token = generateToken(user._id.toString(), user.email);
+
+    res.status(200).json({
+      success: true,
+      message: "Login successful.",
+      data: {
+        user,
+        token,
+      },
+    });
+  }
+);
