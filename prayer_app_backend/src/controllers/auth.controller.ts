@@ -322,3 +322,41 @@ export const changePassword = asyncHandler(
     });
   }
 );
+
+
+// ── @desc   Delete account
+// ── @route  DELETE /api/v1/auth/delete-account
+// ── @access Private
+export const deleteAccount = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { password } = req.body;
+
+    if (!password) {
+      throw BadRequest("Password is required to delete your account.");
+    }
+
+    if (!req.userId) {
+      throw Unauthorized("Not authenticated.");
+    }
+
+    const user = await User.findById(req.userId).select("+password");
+    if (!user) {
+      throw NotFound("User not found.");
+    }
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      throw Unauthorized("Incorrect password.");
+    }
+
+    // Soft delete — deactivate instead of removing data
+    user.isActive = false;
+    user.fcmTokens = [];
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Account deleted successfully.",
+    });
+  }
+);
