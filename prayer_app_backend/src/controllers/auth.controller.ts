@@ -280,3 +280,45 @@ export const getMe = asyncHandler(
     });
   }
 );
+
+// ── @desc   Change password
+// ── @route  PUT /api/v1/auth/change-password
+// ── @access Private
+export const changePassword = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      throw BadRequest("Current password and new password are required.");
+    }
+
+    if (newPassword.length < 6) {
+      throw BadRequest("New password must be at least 6 characters long.");
+    }
+
+    if (!req.userId) {
+      throw Unauthorized("Not authenticated.");
+    }
+
+    // Fetch user with password field
+    const user = await User.findById(req.userId).select("+password");
+    if (!user) {
+      throw NotFound("User not found.");
+    }
+
+    // Verify current password
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      throw Unauthorized("Current password is incorrect.");
+    }
+
+    // Update to new password (auto-hashed via pre-save hook)
+    user.password = newPassword;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Password changed successfully.",
+    });
+  }
+);
