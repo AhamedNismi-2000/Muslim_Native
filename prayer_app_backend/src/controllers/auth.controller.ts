@@ -56,3 +56,134 @@ export const register = asyncHandler(
         "Location must include latitude, longitude, city, and country."
       );
     }
+
+
+      // 2. Validate calculation method and madhab if provided
+    if (
+      calculationMethod &&
+      !CALCULATION_METHODS.includes(calculationMethod)
+    ) {
+      throw BadRequest(
+        `Invalid calculation method. Must be one of: ${CALCULATION_METHODS.join(", ")}`
+      );
+    }
+
+    if (madhab && !MADHABS.includes(madhab)) {
+      throw BadRequest(`Invalid madhab. Must be one of: ${MADHABS.join(", ")}`);
+    }
+
+    // 3. Check if user already exists
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      throw Conflict("An account with this email already exists.");
+    }
+
+    // 4. Create user (password is hashed automatically via pre-save hook)
+    const user = await User.create({
+      name,
+      email: email.toLowerCase(),
+      password,
+      location: {
+        latitude,
+        longitude,
+        city,
+        country,
+        timezone: timezone || "UTC",
+      },
+      calculationMethod: calculationMethod || "MuslimWorldLeague",
+      madhab: madhab || "Shafi",
+    });
+
+    // 5. Generate JWT
+    const token = generateToken(user._id.toString(), user.email);
+
+    // 6. Send response (password excluded via toJSON transform on model)
+    res.status(201).json({
+      success: true,
+      message: "Account created successfully.",
+      data: {
+        user,
+        token,
+      },
+    });
+  }
+);
+
+// ── @desc   Login user
+// ── @route  POST /api/v1/auth/login
+// ── @access Public
+export const login = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { email, password, fcmToken } = req.body;
+
+    // 1. Validate input
+    if (!email || !password) {
+      throw BadRequest("Email and password are required.");
+    }
+
+    // 2. Find user with password included
+    const user = await User.findOne({ email: email.toLowerCase() }).select(
+      "+password"
+    );
+
+    if (!user) {
+      throw Unauthorized("Invalid email or password.");
+    }
+
+    // 3. Check account status
+    if (!user.isActive) {
+      throw Unauthorized(
+        "Your account has been deactivated. Please contact support."
+      );
+    }
+
+        // 2. Validate calculation method and madhab if provided
+    if (
+      calculationMethod &&
+      !CALCULATION_METHODS.includes(calculationMethod)
+    ) {
+      throw BadRequest(
+        `Invalid calculation method. Must be one of: ${CALCULATION_METHODS.join(", ")}`
+      );
+    }
+
+    if (madhab && !MADHABS.includes(madhab)) {
+      throw BadRequest(`Invalid madhab. Must be one of: ${MADHABS.join(", ")}`);
+    }
+
+    // 3. Check if user already exists
+    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    if (existingUser) {
+      throw Conflict("An account with this email already exists.");
+    }
+
+    // 4. Create user (password is hashed automatically via pre-save hook)
+    const user = await User.create({
+      name,
+      email: email.toLowerCase(),
+      password,
+      location: {
+        latitude,
+        longitude,
+        city,
+        country,
+        timezone: timezone || "UTC",
+      },
+      calculationMethod: calculationMethod || "MuslimWorldLeague",
+      madhab: madhab || "Shafi",
+    });
+
+    // 5. Generate JWT
+    const token = generateToken(user._id.toString(), user.email);
+
+    // 6. Send response (password excluded via toJSON transform on model)
+    res.status(201).json({
+      success: true,
+      message: "Account created successfully.",
+      data: {
+        user,
+        token,
+      },
+    });
+  }
+);
