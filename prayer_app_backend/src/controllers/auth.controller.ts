@@ -244,3 +244,39 @@ export const login = asyncHandler(
     });
   }
 );
+
+// ── @desc   Logout user (removes FCM token)
+// ── @route  POST /api/v1/auth/logout
+// ── @access Private
+export const logout = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { fcmToken } = req.body;
+
+    if (fcmToken && req.user) {
+      await req.user.removeFcmToken(fcmToken);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Logged out successfully.",
+    });
+  }
+);
+
+// ── @desc   Get current logged-in user
+// ── @route  GET /api/v1/auth/me
+// ── @access Private
+export const getMe = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      throw Unauthorized("Not authenticated.");
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        user: req.user,
+      },
+    });
+  }
+);
