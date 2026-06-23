@@ -164,3 +164,34 @@ export const getTodayPrayerTimes = (user: IUser): IDailyPrayerTimes => {
 
   return result;
 };
+
+
+// ── Get Weekly Prayer Times for a User ──────────────────
+export const getWeeklyPrayerTimes = (user: IUser): IWeeklyPrayerTimes => {
+  const days: IDailyPrayerTimes[] = [];
+  const today = new Date();
+
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() + i);
+
+    const dayTimes = calculatePrayerTimes(
+      user.location.latitude,
+      user.location.longitude,
+      date,
+      user.calculationMethod,
+      user.madhab,
+      user.location.timezone
+    );
+
+    dayTimes.location.city = user.location.city;
+    dayTimes.location.country = user.location.country;
+    days.push(dayTimes);
+  }
+
+  return {
+    startDate: formatDate(today),
+    endDate: formatDate(days[6].date ? new Date(days[6].date) : today),
+    days,
+  };
+};
