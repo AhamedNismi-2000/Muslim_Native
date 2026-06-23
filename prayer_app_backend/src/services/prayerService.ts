@@ -76,3 +76,48 @@ const formatDate = (date: Date): string => {
 export const getTodayString = (): string => {
   return formatDate(new Date());
 };
+
+// ── Calculate Prayer Times for a Single Day ──────────────
+export const calculatePrayerTimes = (
+  latitude: number,
+  longitude: number,
+  date: Date,
+  calculationMethod: string,
+  madhabString: string,
+  timezone: string = "UTC"
+): IDailyPrayerTimes => {
+  // 1. Set coordinates
+  const coordinates = new Coordinates(latitude, longitude);
+
+  // 2. Set calculation parameters
+  const params = getCalculationMethod(calculationMethod);
+  params.madhab = madhabString === "Hanafi" ? Madhab.Hanafi : Madhab.Shafi;
+  params.highLatitudeRule = HighLatitudeRule.MiddleOfTheNight;
+
+  // 3. Calculate prayer times
+  const prayerTimes = new PrayerTimes(coordinates, date, params);
+
+  // 4. Get current time for next/passed calculation
+  const now = new Date();
+
+  // 5. Build prayer times array
+  const prayerNames: PrayerName[] = [
+    "fajr",
+    "dhuhr",
+    "asr",
+    "maghrib",
+    "isha",
+  ];
+
+  const prayers: IPrayerTime[] = prayerNames.map((name) => {
+    const prayerTime = prayerTimes[name] as Date;
+    const isPassed = prayerTime < now;
+
+    return {
+      name,
+      time: prayerTime,
+      timeString: formatTime(prayerTime, timezone),
+      isNext: false,    // Will be set below
+      isPassed,
+    };
+  });
