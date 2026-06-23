@@ -232,3 +232,55 @@ export const createDailyPrayerLog = async (
 
   return prayerLog;
 };
+
+// ── Mark a Prayer as Completed or Missed ─────────────────
+export const markPrayerStatus = async (
+  userId: mongoose.Types.ObjectId,
+  date: string,
+  prayerName: PrayerName,
+  status: "completed" | "missed"
+): Promise<IPrayerLog> => {
+  // Find the log for this date
+  let log = await PrayerLog.findByUserAndDate(userId, date);
+
+  if (!log) {
+    throw new Error(
+      `Prayer log not found for date ${date}. Please ensure the daily log is created first.`
+    );
+  }
+
+  // Mark the prayer
+  await log.markPrayer(prayerName, status);
+
+  // Update streak if all 5 prayers completed
+  if (log.isFullyCompleted()) {
+    const streak = await PrayerLog.getUserStreak(userId);
+    log.streak = streak;
+    await log.save();
+  }
+
+  return log;
+};
+
+// ── Get Prayer Log for a Specific Date ──────────────────
+export const getPrayerLogByDate = async (
+  userId: mongoose.Types.ObjectId,
+  date: string
+): Promise<IPrayerLog | null> => {
+  return PrayerLog.findByUserAndDate(userId, date);
+};
+
+// ── Get Weekly Prayer Logs ───────────────────────────────
+export const getWeeklyPrayerLogs = async (
+  userId: mongoose.Types.ObjectId
+): Promise<IPrayerLog[]> => {
+  const today = new Date();
+  const weekAgo = new Date(today);
+  weekAgo.setDate(today.getDate() - 6);
+
+  return PrayerLog.getWeeklyLogs(
+    userId,
+    formatDate(weekAgo),
+    formatDate(today)
+  );
+};
