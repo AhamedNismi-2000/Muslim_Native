@@ -121,3 +121,46 @@ export const calculatePrayerTimes = (
       isPassed,
     };
   });
+
+    // 6. Find next prayer
+  const nextPrayerIndex = prayers.findIndex((p) => !p.isPassed);
+  if (nextPrayerIndex !== -1) {
+    prayers[nextPrayerIndex].isNext = true;
+  }
+
+  // 7. Calculate Qibla direction
+  const qiblaDirection = Qibla(coordinates);
+
+  return {
+    date: formatDate(date),
+    location: {
+      city: "",       // Filled in by controller
+      country: "",    // Filled in by controller
+      latitude,
+      longitude,
+    },
+    prayers,
+    nextPrayer: nextPrayerIndex !== -1 ? prayers[nextPrayerIndex] : null,
+    qiblaDirection: Math.round(qiblaDirection * 100) / 100,
+    calculationMethod,
+    madhab: madhabString,
+  };
+};
+
+// ── Get Today's Prayer Times for a User ─────────────────
+export const getTodayPrayerTimes = (user: IUser): IDailyPrayerTimes => {
+  const result = calculatePrayerTimes(
+    user.location.latitude,
+    user.location.longitude,
+    new Date(),
+    user.calculationMethod,
+    user.madhab,
+    user.location.timezone
+  );
+
+  // Fill in location details
+  result.location.city = user.location.city;
+  result.location.country = user.location.country;
+
+  return result;
+};
