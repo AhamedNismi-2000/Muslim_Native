@@ -195,3 +195,40 @@ export const getWeeklyPrayerTimes = (user: IUser): IWeeklyPrayerTimes => {
     days,
   };
 };
+
+// ── Create Daily Prayer Log ──────────────────────────────
+export const createDailyPrayerLog = async (
+  userId: mongoose.Types.ObjectId,
+  user: IUser
+): Promise<IPrayerLog> => {
+  const today = getTodayString();
+
+  // Check if log already exists for today
+  const existingLog = await PrayerLog.findByUserAndDate(userId, today);
+  if (existingLog) return existingLog;
+
+  // Calculate today's prayer times
+  const prayerData = getTodayPrayerTimes(user);
+
+  // Build prayer entries
+  const prayers = prayerData.prayers.map((p) => ({
+    name: p.name,
+    time: p.timeString,
+    status: "pending" as const,
+    completedAt: undefined,
+  }));
+
+  // Create the log
+  const prayerLog = await PrayerLog.create({
+    userId,
+    date: today,
+    prayers,
+    streak: {
+      current: 0,
+      longest: 0,
+      lastUpdated: new Date(),
+    },
+  });
+
+  return prayerLog;
+};
