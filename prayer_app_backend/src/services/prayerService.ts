@@ -284,3 +284,51 @@ export const getWeeklyPrayerLogs = async (
     formatDate(today)
   );
 };
+
+// ── Get Prayer Statistics ────────────────────────────────
+export const getPrayerStats = async (
+  userId: mongoose.Types.ObjectId
+): Promise<{
+  streak: { current: number; longest: number };
+  weeklyCompletion: number;
+  totalCompleted: number;
+  totalPrayers: number;
+  completionRate: number;
+}> => {
+  const streak = await PrayerLog.getUserStreak(userId);
+  const weeklyLogs = await getWeeklyPrayerLogs(userId);
+
+  let totalCompleted = 0;
+  let totalPrayers = 0;
+
+  weeklyLogs.forEach((log) => {
+    totalCompleted += log.completedCount;
+    totalPrayers += log.totalCount;
+  });
+
+  const weeklyCompletion =
+    totalPrayers > 0
+      ? Math.round((totalCompleted / totalPrayers) * 100)
+      : 0;
+
+  return {
+    streak: {
+      current: streak.current,
+      longest: streak.longest,
+    },
+    weeklyCompletion,
+    totalCompleted,
+    totalPrayers,
+    completionRate: weeklyCompletion,
+  };
+};
+
+// ── Get Qibla Direction ──────────────────────────────────
+export const getQiblaDirection = (
+  latitude: number,
+  longitude: number
+): number => {
+  const coordinates = new Coordinates(latitude, longitude);
+  const direction = Qibla(coordinates);
+  return Math.round(direction * 100) / 100;
+};
