@@ -122,7 +122,7 @@ export const calculatePrayerTimes = (
     };
   });
 
-    // 6. Find next prayer
+  // 6. Find next prayer
   const nextPrayerIndex = prayers.findIndex((p) => !p.isPassed);
   if (nextPrayerIndex !== -1) {
     prayers[nextPrayerIndex].isNext = true;
@@ -164,7 +164,6 @@ export const getTodayPrayerTimes = (user: IUser): IDailyPrayerTimes => {
 
   return result;
 };
-
 
 // ── Get Weekly Prayer Times for a User ──────────────────
 export const getWeeklyPrayerTimes = (user: IUser): IWeeklyPrayerTimes => {
