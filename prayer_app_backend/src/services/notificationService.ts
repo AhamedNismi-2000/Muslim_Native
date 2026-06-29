@@ -160,3 +160,80 @@ export const scheduleUserNotifications = async (
         message: "No upcoming notifications to schedule",
       };
     }
+
+       // 6. Use first FCM token as primary
+    const primaryFcmToken = user.fcmTokens[0];
+
+    // 7. Create notification document
+    await Notification.create({
+      userId,
+      date,
+      type: "prayer_time",
+      fcmToken: primaryFcmToken,
+      scheduledPrayers,
+      isProcessed: false,
+    });
+
+    return {
+      success: true,
+      userId: userId.toString(),
+      date,
+      scheduledCount: scheduledPrayers.length,
+      message: `Successfully scheduled ${scheduledPrayers.length} notifications`,
+    };
+  } catch (error) {
+    console.error(`Error scheduling notifications for user ${userId}: ${error}`);
+    return {
+      success: false,
+      userId: userId.toString(),
+      date,
+      scheduledCount: 0,
+      message: `Error: ${error}`,
+    };
+  }
+};
+
+// ── Schedule Notifications for All Users ─────────────────
+export const scheduleAllUsersNotifications = async (
+  date: string
+): Promise<void> => {
+  try {
+    console.log(`Scheduling notifications for all users — date: ${date}`);
+
+    // Get all active users in batches to avoid memory overload
+    const batchSize = 100;
+    let skip = 0;
+    let processedCount = 0;
+
+    while (true) {
+      const users = await User.find({ isActive: true })
+        .select("_id")
+        .skip(skip)
+        .limit(batchSize);
+
+      if (users.length === 0) break;
+
+      // Process batch in parallel
+      await Promise.allSettled(
+        users.map((user) =>
+          scheduleUserNotifications(
+            user._id as mongoose.Types.ObjectId,
+            date
+          )
+        )
+      );
+
+      processedCount += users.length;
+      skip += batchSize;
+
+      console.log(`Processed ${processedCount} users...`);
+    }
+
+    console.log(
+      `Notification scheduling complete. Total users processed: ${processedCount}`
+    );
+  } catch (error) {
+    console.error(`Error scheduling notifications for all users: ${error}`);
+  }
+};
+
