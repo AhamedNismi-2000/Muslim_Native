@@ -105,7 +105,7 @@ export const scheduleUserNotifications = async (
       };
     }
 
-       // 3. Cancel any existing notifications for this date
+    // 3. Cancel any existing notifications for this date
     await Notification.cancelUserNotifications(userId);
 
     // 4. Calculate prayer times for the date
@@ -161,7 +161,7 @@ export const scheduleUserNotifications = async (
       };
     }
 
-       // 6. Use first FCM token as primary
+    // 6. Use first FCM token as primary
     const primaryFcmToken = user.fcmTokens[0];
 
     // 7. Create notification document
@@ -237,7 +237,6 @@ export const scheduleAllUsersNotifications = async (
   }
 };
 
-
 // ── Fire Due Notifications ───────────────────────────────
 export const fireDueNotifications = async (): Promise<void> => {
   try {
@@ -286,7 +285,7 @@ const processSingleNotification = async (
 
     if (duePrayers.length === 0) return;
 
- // Send notification for each due prayer
+    // Send notification for each due prayer
     for (const prayer of duePrayers) {
       await sendPrayerNotification(
         notification,
@@ -354,7 +353,6 @@ const sendPrayerNotification = async (
     );
   }
 };
-
 
 // ── Send General Notification to a User ─────────────────
 export const sendGeneralNotification = async (
