@@ -355,3 +355,55 @@ const sendPrayerNotification = async (
   }
 };
 
+
+// ── Send General Notification to a User ─────────────────
+export const sendGeneralNotification = async (
+  userId: mongoose.Types.ObjectId,
+  title: string,
+  body: string,
+  data?: Record<string, string>
+): Promise<boolean> => {
+  try {
+    const user = await User.findById(userId);
+    if (!user || user.fcmTokens.length === 0) return false;
+
+    if (user.fcmTokens.length === 1) {
+      return sendPushNotification(user.fcmTokens[0], title, body, data);
+    }
+
+    await sendMulticastNotification(user.fcmTokens, title, body, data);
+    return true;
+  } catch (error) {
+    console.error(`Error sending general notification: ${error}`);
+    return false;
+  }
+};
+
+// ── Cancel User Notifications ────────────────────────────
+export const cancelUserNotifications = async (
+  userId: mongoose.Types.ObjectId
+): Promise<void> => {
+  await Notification.cancelUserNotifications(userId);
+};
+
+// ── Reschedule User Notifications ───────────────────────
+// Called when user changes location or notification settings
+export const rescheduleUserNotifications = async (
+  userId: mongoose.Types.ObjectId
+): Promise<IScheduleResult> => {
+  const today = getTodayString();
+
+  // Cancel existing
+  await cancelUserNotifications(userId);
+
+  // Reschedule from now
+  return scheduleUserNotifications(userId, today);
+};
+
+// ── Get Notification Status for a User ──────────────────
+export const getUserNotificationStatus = async (
+  userId: mongoose.Types.ObjectId,
+  date: string
+): Promise<INotification | null> => {
+  return Notification.findByUserAndDate(userId, date);
+};
