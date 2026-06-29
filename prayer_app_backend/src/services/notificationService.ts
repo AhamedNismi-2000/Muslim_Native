@@ -104,3 +104,59 @@ export const scheduleUserNotifications = async (
         message: "No FCM tokens found for user",
       };
     }
+
+       // 3. Cancel any existing notifications for this date
+    await Notification.cancelUserNotifications(userId);
+
+    // 4. Calculate prayer times for the date
+    const targetDate = new Date(date);
+    const prayerData = calculatePrayerTimes(
+      user.location.latitude,
+      user.location.longitude,
+      targetDate,
+      user.calculationMethod,
+      user.madhab,
+      user.location.timezone
+    );
+
+    // 5. Build scheduled prayers based on user preferences
+    const scheduledPrayers: IScheduledPrayer[] = [];
+    const { notificationSettings } = user;
+    const minutesBefore = notificationSettings.reminderMinutesBefore;
+
+    const prayerNames: PrayerName[] = [
+      "fajr",
+      "dhuhr",
+      "asr",
+      "maghrib",
+      "isha",
+    ];
+
+    for (const prayerName of prayerNames) {
+      // Skip if user disabled this prayer's notification
+      if (!notificationSettings[prayerName]) continue;
+
+      const prayer = prayerData.prayers.find((p) => p.name === prayerName);
+      if (!prayer) continue;
+
+      const scheduledTime = getNotificationTime(prayer.time, minutesBefore);
+
+      // Skip if scheduled time is in the past
+      if (scheduledTime < new Date()) continue;
+
+      scheduledPrayers.push({
+        name: prayerName,
+        scheduledTime,
+        status: "pending",
+      });
+    }
+
+    if (scheduledPrayers.length === 0) {
+      return {
+        success: true,
+        userId: userId.toString(),
+        date,
+        scheduledCount: 0,
+        message: "No upcoming notifications to schedule",
+      };
+    }
