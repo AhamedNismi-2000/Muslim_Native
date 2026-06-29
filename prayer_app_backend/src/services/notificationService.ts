@@ -286,4 +286,72 @@ const processSingleNotification = async (
 
     if (duePrayers.length === 0) return;
 
+ // Send notification for each due prayer
+    for (const prayer of duePrayers) {
+      await sendPrayerNotification(
+        notification,
+        user,
+        prayer.name as PrayerName
+      );
+    }
+  } catch (error) {
+    console.error(
+      `Error processing notification ${notification._id}: ${error}`
+    );
+  }
+};
+
+// ── Send Prayer Notification ─────────────────────────────
+const sendPrayerNotification = async (
+  notification: INotification,
+  user: IUser,
+  prayerName: PrayerName
+): Promise<void> => {
+  try {
+    const minutesBefore =
+      user.notificationSettings.reminderMinutesBefore;
+    const payload = getPrayerMessage(prayerName, minutesBefore);
+
+    // Send to all user devices
+    if (user.fcmTokens.length === 1) {
+      // Single device
+      const success = await sendPushNotification(
+        user.fcmTokens[0],
+        payload.title,
+        payload.body,
+        payload.data
+      );
+
+      if (success) {
+        await notification.markPrayerSent(prayerName);
+      } else {
+        await notification.markPrayerFailed(
+          prayerName,
+          "FCM send failed"
+        );
+      }
+    } else {
+      // Multiple devices
+      await sendMulticastNotification(
+        user.fcmTokens,
+        payload.title,
+        payload.body,
+        payload.data
+      );
+      await notification.markPrayerSent(prayerName);
+    }
+
+    console.log(
+      `Prayer notification sent — user: ${user._id}, prayer: ${prayerName}`
+    );
+  } catch (error) {
+    console.error(
+      `Error sending prayer notification for ${prayerName}: ${error}`
+    );
+    await notification.markPrayerFailed(
+      prayerName,
+      `Send error: ${error}`
+    );
+  }
+};
 
