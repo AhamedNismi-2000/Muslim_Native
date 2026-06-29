@@ -65,3 +65,42 @@ const getPrayerMessage = (
     },
   };
 };
+
+// ── Calculate Notification Time ──────────────────────────
+const getNotificationTime = (
+  prayerTime: Date,
+  minutesBefore: number
+): Date => {
+  const notifTime = new Date(prayerTime);
+  notifTime.setMinutes(notifTime.getMinutes() - minutesBefore);
+  return notifTime;
+};
+
+// ── Schedule Notifications for a Single User ─────────────
+export const scheduleUserNotifications = async (
+  userId: mongoose.Types.ObjectId,
+  date: string
+): Promise<IScheduleResult> => {
+  try {
+    // 1. Get user with notification settings
+    const user = await User.findById(userId);
+    if (!user) {
+      return {
+        success: false,
+        userId: userId.toString(),
+        date,
+        scheduledCount: 0,
+        message: "User not found",
+      };
+    }
+
+    // 2. Check if user has FCM tokens
+    if (!user.fcmTokens || user.fcmTokens.length === 0) {
+      return {
+        success: false,
+        userId: userId.toString(),
+        date,
+        scheduledCount: 0,
+        message: "No FCM tokens found for user",
+      };
+    }
