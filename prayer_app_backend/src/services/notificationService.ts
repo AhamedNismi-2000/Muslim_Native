@@ -237,3 +237,53 @@ export const scheduleAllUsersNotifications = async (
   }
 };
 
+
+// ── Fire Due Notifications ───────────────────────────────
+export const fireDueNotifications = async (): Promise<void> => {
+  try {
+    const today = getTodayString();
+    const now = new Date();
+
+    // 1. Find all unprocessed notification documents for today
+    const notifications = await Notification.findPendingForDate(today);
+
+    if (notifications.length === 0) return;
+
+    console.log(
+      `Found ${notifications.length} notification documents to process`
+    );
+
+    for (const notification of notifications) {
+      await processSingleNotification(notification, now);
+    }
+  } catch (error) {
+    console.error(`Error firing due notifications: ${error}`);
+  }
+};
+
+// ── Process a Single Notification Document ───────────────
+const processSingleNotification = async (
+  notification: INotification,
+  now: Date
+): Promise<void> => {
+  try {
+    const user = await User.findById(notification.userId);
+    if (!user || !user.isActive) {
+      await notification.cancelAll();
+      return;
+    }
+
+    // Find prayers that are due right now (within a 1-minute window)
+    const duePrayers = notification.scheduledPrayers.filter((prayer) => {
+      if (prayer.status !== "pending") return false;
+
+      const scheduledTime = new Date(prayer.scheduledTime);
+      const diffMs = now.getTime() - scheduledTime.getTime();
+
+      // Fire if within a 60-second window past the scheduled time
+      return diffMs >= 0 && diffMs <= 60000;
+    });
+
+    if (duePrayers.length === 0) return;
+
+
