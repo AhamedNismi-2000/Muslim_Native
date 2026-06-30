@@ -148,3 +148,49 @@ const startWeeklyCleanupJob = (): void => {
     "[CRON] Weekly cleanup job started — runs Sundays at 03:00 UTC"
   );
 };
+
+// ── Initialize All Cron Jobs ─────────────────────────────
+export const initializeCronJobs = (): void => {
+  console.log("─────────────────────────────────");
+  console.log("Initializing cron jobs...");
+  console.log("─────────────────────────────────");
+
+  startNotificationFireJob();
+  startDailySchedulingJob();
+  startDailyPrayerLogJob();
+  startWeeklyCleanupJob();
+
+  console.log("─────────────────────────────────");
+  console.log(`Total active cron jobs: ${jobs.length}`);
+  console.log("─────────────────────────────────");
+};
+
+// ── Stop All Cron Jobs (for graceful shutdown) ──────────
+export const stopAllCronJobs = (): void => {
+  jobs.forEach((job) => job.stop());
+  console.log(`[CRON] Stopped ${jobs.length} cron jobs`);
+};
+
+// ── Manually Trigger a Job (useful for testing) ──────────
+export const triggerDailySchedulingManually = async (): Promise<void> => {
+  console.log("[CRON] Manually triggering daily scheduling job...");
+  const today = getTodayString();
+  await scheduleAllUsersNotifications(today);
+  console.log("[CRON] Manual trigger completed");
+};
+
+export const triggerPrayerLogCreationManually = async (): Promise<void> => {
+  console.log("[CRON] Manually triggering prayer log creation...");
+
+  const users = await User.find({ isActive: true });
+
+  await Promise.allSettled(
+    users.map((user) =>
+      createDailyPrayerLog(user._id as mongoose.Types.ObjectId, user)
+    )
+  );
+
+  console.log(
+    `[CRON] Manual prayer log creation completed for ${users.length} users`
+  );
+};
