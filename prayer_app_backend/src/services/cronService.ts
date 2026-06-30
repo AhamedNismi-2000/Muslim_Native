@@ -107,3 +107,44 @@ const startDailyPrayerLogJob = (): void => {
     "[CRON] Daily prayer log creation job started — runs at 00:05 UTC"
   );
 };
+
+// ── Job 4: Cleanup Stale FCM Tokens ─────────────────────
+// Runs weekly on Sunday at 03:00 UTC — removes inactive user accounts' stale data
+const startWeeklyCleanupJob = (): void => {
+  const job = cron.schedule(
+    "0 3 * * 0", // 03:00 every Sunday
+    async () => {
+      try {
+        console.log("[CRON] Starting weekly cleanup job...");
+
+        // Deactivate accounts that haven't logged in for 180+ days
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 180);
+
+        const result = await User.updateMany(
+          {
+            lastLogin: { $lt: sixMonthsAgo },
+            isActive: true,
+          },
+          {
+            $set: { fcmTokens: [] }, // Clear stale tokens, keep account
+          }
+        );
+
+        console.log(
+          `[CRON] Weekly cleanup completed — cleared tokens for ${result.modifiedCount} inactive users`
+        );
+      } catch (error) {
+        console.error(`[CRON] Weekly cleanup job error: ${error}`);
+      }
+    },
+    {
+      timezone: "UTC",
+    }
+  );
+
+  jobs.push(job);
+  console.log(
+    "[CRON] Weekly cleanup job started — runs Sundays at 03:00 UTC"
+  );
+};
