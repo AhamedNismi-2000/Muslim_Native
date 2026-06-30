@@ -56,3 +56,54 @@ const startDailySchedulingJob = (): void => {
     "[CRON] Daily notification scheduling job started — runs at 00:01 UTC"
   );
 };
+
+// ── Job 3: Create Daily Prayer Logs ──────────────────────
+// Runs daily at 00:05 UTC — creates a fresh prayer log document for every active user
+const startDailyPrayerLogJob = (): void => {
+  const job = cron.schedule(
+    "5 0 * * *", // 00:05 every day
+    async () => {
+      try {
+        console.log("[CRON] Starting daily prayer log creation job...");
+
+        const batchSize = 100;
+        let skip = 0;
+        let processedCount = 0;
+
+        while (true) {
+          const users = await User.find({ isActive: true })
+            .skip(skip)
+            .limit(batchSize);
+
+          if (users.length === 0) break;
+
+          await Promise.allSettled(
+            users.map((user) =>
+              createDailyPrayerLog(
+                user._id as mongoose.Types.ObjectId,
+                user
+              )
+            )
+          );
+
+          processedCount += users.length;
+          skip += batchSize;
+        }
+
+        console.log(
+          `[CRON] Daily prayer log job completed — ${processedCount} logs created`
+        );
+      } catch (error) {
+        console.error(`[CRON] Daily prayer log job error: ${error}`);
+      }
+    },
+    {
+      timezone: "UTC",
+    }
+  );
+
+  jobs.push(job);
+  console.log(
+    "[CRON] Daily prayer log creation job started — runs at 00:05 UTC"
+  );
+};
