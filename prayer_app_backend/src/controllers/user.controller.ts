@@ -81,3 +81,55 @@ export const updateProfile = asyncHandler(
     });
   }
 );
+
+// ── @desc   Update calculation method and madhab
+// ── @route  PUT /api/v1/user/prayer-settings
+// ── @access Private
+export const updatePrayerSettings = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    if (!req.user || !req.userId) {
+      throw Unauthorized("Not authenticated.");
+    }
+
+    const { calculationMethod, madhab } = req.body;
+
+    if (!calculationMethod && !madhab) {
+      throw BadRequest(
+        "Provide at least one setting to update (calculationMethod or madhab)."
+      );
+    }
+
+    if (
+      calculationMethod &&
+      !CALCULATION_METHODS.includes(calculationMethod)
+    ) {
+      throw BadRequest(
+        `Invalid calculation method. Must be one of: ${CALCULATION_METHODS.join(", ")}`
+      );
+    }
+
+    if (madhab && !MADHABS.includes(madhab)) {
+      throw BadRequest(
+        `Invalid madhab. Must be one of: ${MADHABS.join(", ")}`
+      );
+    }
+
+    if (calculationMethod) req.user.calculationMethod = calculationMethod;
+    if (madhab) req.user.madhab = madhab;
+
+    await req.user.save();
+
+    // Reschedule notifications since prayer times changed
+    const userId = new mongoose.Types.ObjectId(req.userId);
+    await rescheduleUserNotifications(userId);
+
+    res.status(200).json({
+      success: true,
+      message: "Prayer settings updated and notifications rescheduled.",
+      data: {
+        calculationMethod: req.user.calculationMethod,
+        madhab:            req.user.madhab,
+      },
+    });
+  }
+);
