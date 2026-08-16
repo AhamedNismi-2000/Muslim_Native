@@ -1,209 +1,83 @@
-import { Request, Response } from 'express';
-import { asyncHandler } from '../middleware/errorHandler';
-import { AppError } from '../utils/AppError'; // adjust path if AppError lives elsewhere
-import User from '../models/User';
+import { Request, Response } from "express";
+import mongoose from "mongoose";
+import User from "../models/User";
+import {
+  asyncHandler,
+  BadRequest,
+  NotFound,
+  Unauthorized,
+} from "../middleware/errorHandler";
+import {
+  rescheduleUserNotifications,
+  cancelUserNotifications,
+  getUserNotificationStatus,
+} from "../services/notificationService";
+import { getPrayerStats, getTodayString } from "../services/prayerService";
+import { CALCULATION_METHODS, MADHABS } from "../constants/calculationMethods";
 
-/**
- * @desc    Get the authenticated user's profile
- * @route   GET /api/users/me
- * @access  Private
- */
-export const getProfile = asyncHandler(async (req: Request, res: Response) => {
-  const user = await User.findById(req.userId).select('-__v');
-
-  if (!user || !user.isActive) {
-    throw AppError.NotFound('User not found');
-  }
-
-  res.status(200).json({
-    success: true,
-    data: user,
-  });
-});
-
-/**
- * @desc    Update the authenticated user's profile
- *          (name, location, calculation method, madhab, notification prefs)
- * @route   PATCH /api/users/me
- * @access  Private
- */
-export const updateProfile = asyncHandler(async (req: Request, res: Response) => {
-  const allowedFields = [
-    'name',
-    'location',
-    'calculationMethod',
-    'madhab',
-    'highLatitudeRule',
-    'notificationPreferences',
-    'timezone',
-  ] as const;
-
-  const updates: Record<string, unknown> = {};
-
-  for (const field of allowedFields) {
-    if (req.body[field] !== undefined) {
-      updates[field] = req.body[field];
+// ── @desc   Get user profile
+// ── @route  GET /api/v1/user/profile
+// ── @access Private
+export const getProfile = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      throw Unauthorized("Not authenticated.");
     }
-  }
 
-  if (Object.keys(updates).length === 0) {
-    throw AppError.BadRequest('No valid fields provided to update');
-  }
-
-  const user = await User.findOneAndUpdate(
-    { _id: req.userId, isActive: true },
-    { $set: updates },
-    { new: true, runValidators: true }
-  ).select('-__v');
-
-  if (!user) {
-    throw AppError.NotFound('User not found');
-  }
-
-  res.status(200).json({
-    success: true,
-    message: 'Profile updated successfully',
-    data: user,
-  });
-});
-
-/**
- * @desc    Update user's location (used to recalculate prayer times)
- * @route   PATCH /api/users/me/location
- * @access  Private
- */
-export const updateLocation = asyncHandler(async (req: Request, res: Response) => {
-  const { latitude, longitude, city, country } = req.body;
-
-  if (latitude === undefined || longitude === undefined) {
-    throw AppError.BadRequest('Latitude and longitude are required');
-  }
-
-  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
-    throw AppError.BadRequest('Invalid latitude or longitude values');
-  }
-
-  const user = await User.findOneAndUpdate(
-    { _id: req.userId, isActive: true },
-    {
-      $set: {
-        location: {
-          latitude,
-          longitude,
-          city: city ?? undefined,
-          country: country ?? undefined,
-        },
+    res.status(200).json({
+      success: true,
+      data: {
+        user: req.user,
       },
-    },
-    { new: true, runValidators: true }
-  ).select('-__v');
-
-  if (!user) {
-    throw AppError.NotFound('User not found');
+    });
   }
+);
 
-  res.status(200).json({
-    success: true,
-    message: 'Location updated successfully',
-    data: user,
-  });
-});
+// ── @desc   Update user profile (name, email)
+// ── @route  PUT /api/v1/user/profile
+// ── @access Private
+export const updateProfile = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    if (!req.user || !req.userId) {
+      throw Unauthorized("Not authenticated.");
+    }
 
+    const { name, email } = req.body;
 
-/**
- * @desc    Register or update an FCM toen for the current device
- * @route   POST /api/users/me/fcm-token
- * @access  Private
- */
-export const addFcmToken = asyncHandler(async (req: Request, res: Response) => {
-  const { token, deviceId, platform } = req.body;
+    if (!name && !email) {
+      throw BadRequest("Provide at least one field to update.");
+    }
 
-  if (!token || !deviceId || !platform) {
-    throw AppError.BadRequest('token, deviceId, and platform are required');
-  }
+    // Validate email format if provided
+    if (email) {
+      const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
+      if (!emailRegex.test(email)) {
+        throw BadRequest("Please provide a valid email address.");
+      }
 
-  if (!['ios', 'android'].includes(platform)) {
-    throw AppError.BadRequest('platform must be either "ios" or "android"');
-  }
+      // Check if email is already taken by another user
+      const existingUser = await User.findOne({
+        email: email.toLowerCase(),
+        _id: { $ne: req.userId },
+      });
 
-  const user = await User.findOne({ _id: req.userId, isActive: true });
+      if (existingUser) {
+        throw BadRequest("Email is already in use by another account.");
+      }
+    }
 
-  if (!user) {
-    throw AppError.NotFound('User not found');
-  }
+    // Apply updates
+    if (name) req.user.name = name;
+    if (email) req.user.email = email.toLowerCase();
 
-  // Remove any existing entry for this device, then push the fresh token.
-  // Keeps the array free of stale duplicates when a device's token rotates.
-  user.fcmTokens = user.fcmTokens.filter((t: any) => t.deviceId !== deviceId);
-  user.fcmTokens.push({ token, deviceId, platform, updatedAt: new Date() });
+    await req.user.save();
 
-  await user.save();
-
-  res.status(200).json({
-    success: true,
-    message: 'FCM token registered',
-    data: { fcmTokens: user.fcmTokens },
-  });
-});
-
-/**
- * @desc    Remove an FCM token (e.g. on logout from a specific device)
- * @route   DELETE /api/users/me/fcm-token/:deviceId
- * @access  Private
- */
-export const removeFcmToken = asyncHandler(async (req: Request, res: Response) => {
-  const { deviceId } = req.params;
-
-  if (!deviceId) {
-    throw AppError.BadRequest('deviceId is required');
-  }
-
-  const user = await User.findOne({ _id: req.userId, isActive: true });
-
-  if (!user) {
-    throw AppError.NotFound('User not found');
-  }
-
-  const originalLength = user.fcmTokens.length;
-  user.fcmTokens = user.fcmTokens.filter((t: any) => t.deviceId !== deviceId);
-
-  if (user.fcmTokens.length === originalLength) {
-    throw AppError.NotFound('No FCM token found for this device');
-  }
-
-  await user.save();
-
-  res.status(200).json({
-    success: true,
-    message: 'FCM token removed',
-    data: { fcmTokens: user.fcmTokens },
-  });
-});
-
-/**
- * @desc    Deactivate (soft delete) the authenticated user's account
- * @route   DELETE /api/users/me
- * @access  Private
- */
-export const deactivateAccount = asyncHandler(async (req: Request, res: Response) => {
-  const user = await User.findOneAndUpdate(
-    { _id: req.userId, isActive: true },
-    {
-      $set: {
-        isActive: false,
-        deactivatedAt: new Date(),
-        fcmTokens: [], // wipe device tokens so cron jobs stop notifying this account
+    res.status(200).json({
+      success: true,
+      message: "Profile updated successfully.",
+      data: {
+        user: req.user,
       },
-    },
-    { new: true }
-  );
-
-  if (!user) {
-    throw AppError.NotFound('User not found');
+    });
   }
-
-  res.status(200).json({
-    success: true,
-    message: 'Account deactivated successfully',
-  });
-});
+);
