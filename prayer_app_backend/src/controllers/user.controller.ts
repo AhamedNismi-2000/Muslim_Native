@@ -200,3 +200,34 @@ export const updateNotificationSettings = asyncHandler(
     });
   }
 );
+
+// ── @desc   Register FCM token for push notifications
+// ── @route  POST /api/v1/user/fcm-token
+// ── @access Private
+export const registerFcmToken = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    if (!req.user || !req.userId) {
+      throw Unauthorized("Not authenticated.");
+    }
+
+    const { fcmToken } = req.body;
+
+    if (!fcmToken || typeof fcmToken !== "string") {
+      throw BadRequest("A valid FCM token is required.");
+    }
+
+    await req.user.addFcmToken(fcmToken);
+
+    // Reschedule notifications for this device
+    const userId = new mongoose.Types.ObjectId(req.userId);
+    await rescheduleUserNotifications(userId);
+
+    res.status(200).json({
+      success: true,
+      message: "FCM token registered successfully.",
+      data: {
+        fcmTokenCount: req.user.fcmTokens.length,
+      },
+    });
+  }
+);
