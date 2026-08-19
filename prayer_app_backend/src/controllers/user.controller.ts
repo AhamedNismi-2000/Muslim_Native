@@ -133,3 +133,70 @@ export const updatePrayerSettings = asyncHandler(
     });
   }
 );
+
+// ── @desc   Update notification settings per prayer
+// ── @route  PUT /api/v1/user/notification-settings
+// ── @access Private
+export const updateNotificationSettings = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    if (!req.user || !req.userId) {
+      throw Unauthorized("Not authenticated.");
+    }
+
+    const {
+      fajr,
+      dhuhr,
+      asr,
+      maghrib,
+      isha,
+      reminderMinutesBefore,
+    } = req.body;
+
+    // Validate reminderMinutesBefore if provided
+    if (reminderMinutesBefore !== undefined) {
+      if (
+        typeof reminderMinutesBefore !== "number" ||
+        reminderMinutesBefore < 0 ||
+        reminderMinutesBefore > 60
+      ) {
+        throw BadRequest(
+          "reminderMinutesBefore must be a number between 0 and 60."
+        );
+      }
+    }
+
+    // Validate boolean fields
+    const booleanFields = { fajr, dhuhr, asr, maghrib, isha };
+    for (const [key, value] of Object.entries(booleanFields)) {
+      if (value !== undefined && typeof value !== "boolean") {
+        throw BadRequest(`${key} must be a boolean value.`);
+      }
+    }
+
+    // Apply updates
+    const settings = req.user.notificationSettings;
+    if (fajr    !== undefined) settings.fajr    = fajr;
+    if (dhuhr   !== undefined) settings.dhuhr   = dhuhr;
+    if (asr     !== undefined) settings.asr     = asr;
+    if (maghrib !== undefined) settings.maghrib = maghrib;
+    if (isha    !== undefined) settings.isha    = isha;
+    if (reminderMinutesBefore !== undefined) {
+      settings.reminderMinutesBefore = reminderMinutesBefore;
+    }
+
+    req.user.notificationSettings = settings;
+    await req.user.save();
+
+    // Reschedule with new settings
+    const userId = new mongoose.Types.ObjectId(req.userId);
+    await rescheduleUserNotifications(userId);
+
+    res.status(200).json({
+      success: true,
+      message: "Notification settings updated and notifications rescheduled.",
+      data: {
+        notificationSettings: req.user.notificationSettings,
+      },
+    });
+  }
+);
