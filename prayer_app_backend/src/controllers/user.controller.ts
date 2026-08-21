@@ -326,3 +326,31 @@ export const cancelNotifications = asyncHandler(
     });
   }
 );
+
+// ── @desc   Get full user dashboard data in one call
+// ── @route  GET /api/v1/user/dashboard
+// ── @access Private
+export const getDashboard = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    if (!req.user || !req.userId) {
+      throw Unauthorized("Not authenticated.");
+    }
+
+    const userId = new mongoose.Types.ObjectId(req.userId);
+
+    // Run all queries in parallel
+    const [stats, notificationStatus] = await Promise.all([
+      getPrayerStats(userId),
+      getUserNotificationStatus(userId, getTodayString()),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        user:               req.user,
+        stats,
+        notificationStatus,
+      },
+    });
+  }
+);
