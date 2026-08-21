@@ -258,3 +258,53 @@ export const removeFcmToken = asyncHandler(
     });
   }
 );
+
+// ── @desc   Get user prayer statistics
+// ── @route  GET /api/v1/user/stats
+// ── @access Private
+export const getUserStats = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    if (!req.userId) {
+      throw Unauthorized("Not authenticated.");
+    }
+
+    const userId = new mongoose.Types.ObjectId(req.userId);
+    const stats  = await getPrayerStats(userId);
+
+    res.status(200).json({
+      success: true,
+      data: stats,
+    });
+  }
+);
+
+// ── @desc   Get notification status for today
+// ── @route  GET /api/v1/user/notification-status
+// ── @access Private
+export const getNotificationStatus = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    if (!req.userId) {
+      throw Unauthorized("Not authenticated.");
+    }
+
+    const userId = new mongoose.Types.ObjectId(req.userId);
+    const today  = getTodayString();
+
+    const status = await getUserNotificationStatus(userId, today);
+
+    if (!status) {
+      res.status(200).json({
+        success: true,
+        message: "No notifications scheduled for today yet.",
+        data: null,
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: status,
+    });
+  }
+);
+
