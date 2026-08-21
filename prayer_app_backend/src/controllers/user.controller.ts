@@ -231,3 +231,30 @@ export const registerFcmToken = asyncHandler(
     });
   }
 );
+
+// ── @desc   Remove FCM token (on logout from a device)
+// ── @route  DELETE /api/v1/user/fcm-token
+// ── @access Private
+export const removeFcmToken = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      throw Unauthorized("Not authenticated.");
+    }
+
+    const { fcmToken } = req.body;
+
+    if (!fcmToken || typeof fcmToken !== "string") {
+      throw BadRequest("A valid FCM token is required.");
+    }
+
+    await req.user.removeFcmToken(fcmToken);
+
+    res.status(200).json({
+      success: true,
+      message: "FCM token removed successfully.",
+      data: {
+        fcmTokenCount: req.user.fcmTokens.length,
+      },
+    });
+  }
+);
