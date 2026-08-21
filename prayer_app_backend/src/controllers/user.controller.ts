@@ -308,3 +308,21 @@ export const getNotificationStatus = asyncHandler(
   }
 );
 
+// ── @desc   Cancel all notifications for user
+// ── @route  DELETE /api/v1/user/notifications
+// ── @access Private
+export const cancelNotifications = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    if (!req.userId) {
+      throw Unauthorized("Not authenticated.");
+    }
+
+    const userId = new mongoose.Types.ObjectId(req.userId);
+    await cancelUserNotifications(userId);
+
+    res.status(200).json({
+      success: true,
+      message: "All notifications cancelled successfully.",
+    });
+  }
+);
