@@ -354,3 +354,41 @@ export const getDashboard = asyncHandler(
     });
   }
 );
+
+// ── @desc   Deactivate account
+// ── @route  PUT /api/v1/user/deactivate
+// ── @access Private
+export const deactivateAccount = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    if (!req.user || !req.userId) {
+      throw Unauthorized("Not authenticated.");
+    }
+
+    const { password } = req.body;
+
+    if (!password) {
+      throw BadRequest("Password is required to deactivate your account.");
+    }
+
+    // Verify password
+    const user = await User.findById(req.userId).select("+password");
+    if (!user) throw NotFound("User not found.");
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) throw Unauthorized("Incorrect password.");
+
+    // Cancel all notifications first
+    const userId = new mongoose.Types.ObjectId(req.userId);
+    await cancelUserNotifications(userId);
+
+    // Deactivate
+    user.isActive   = false;
+    user.fcmTokens  = [];
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Account deactivated successfully.",
+    });
+  }
+);
