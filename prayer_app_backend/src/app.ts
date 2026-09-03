@@ -11,6 +11,7 @@ import authRoutes from "./routes/auth.routes";
 import prayerRoutes from "./routes/prayer.routes";
 import userRoutes from "./routes/user.routes";
 import notificationRoutes from "./routes/notification.routes";
+import { initializeCronJobs, stopAllCronJobs } from "./services/cronService";
 import {
   errorHandler,
   notFoundHandler
@@ -43,7 +44,7 @@ app.use(
     credentials: true,
   })
 );
-
+initializeCronJobs();
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
