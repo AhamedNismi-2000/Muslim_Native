@@ -107,3 +107,56 @@ export const getWeeklyTimes = asyncHandler(
   }
 );
 
+// ── @desc   Get prayer times for custom coordinates
+// ── @route  POST /api/v1/prayer/custom
+// ── @access Private
+export const getCustomLocationTimes = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const {
+      latitude,
+      longitude,
+      date,
+      calculationMethod,
+      madhab,
+      timezone,
+    } = req.body;
+
+    // Validate coordinates
+    if (latitude === undefined || longitude === undefined) {
+      throw BadRequest("Latitude and longitude are required.");
+    }
+
+    if (latitude < -90 || latitude > 90) {
+      throw BadRequest("Latitude must be between -90 and 90.");
+    }
+
+    if (longitude < -180 || longitude > 180) {
+      throw BadRequest("Longitude must be between -180 and 180.");
+    }
+
+    const targetDate = date ? new Date(date) : new Date();
+    if (isNaN(targetDate.getTime())) {
+      throw BadRequest("Invalid date value.");
+    }
+
+    const method = calculationMethod || req.user?.calculationMethod || "MuslimWorldLeague";
+    const madhabValue = madhab || req.user?.madhab || "Shafi";
+    const tz = timezone || req.user?.location.timezone || "UTC";
+
+    const prayerData = calculatePrayerTimes(
+      latitude,
+      longitude,
+      targetDate,
+      method,
+      madhabValue,
+      tz
+    );
+
+    res.status(200).json({
+      success: true,
+      data: prayerData,
+    });
+  }
+);
+
+
