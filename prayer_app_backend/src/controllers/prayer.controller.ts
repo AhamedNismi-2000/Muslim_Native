@@ -88,3 +88,22 @@ export const getPrayerTimesByDate = asyncHandler(
     });
   }
 );
+
+// ── @desc   Get weekly prayer times (next 7 days)
+// ── @route  GET /api/v1/prayer/weekly
+// ── @access Private
+export const getWeeklyTimes = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      throw BadRequest("User not found in request.");
+    }
+
+    const weeklyData = getWeeklyPrayerTimes(req.user);
+
+    res.status(200).json({
+      success: true,
+      data: weeklyData,
+    });
+  }
+);
+
