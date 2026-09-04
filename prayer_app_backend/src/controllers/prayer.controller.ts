@@ -232,5 +232,34 @@ export const getTodayLog = asyncHandler(
     });
   }
 );
+// ── @desc   Get prayer log for a specific date
+// ── @route  GET /api/v1/prayer/log/:date
+// ── @access Private
+export const getPrayerLogForDate = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { date } = req.params;
+
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(date)) {
+      throw BadRequest("Invalid date format. Use YYYY-MM-DD.");
+    }
+
+    if (!req.userId) {
+      throw BadRequest("User not authenticated.");
+    }
+
+    const userId = new mongoose.Types.ObjectId(req.userId);
+    const log    = await getPrayerLogByDate(userId, date);
+
+    if (!log) {
+      throw NotFound(`No prayer log found for date ${date}.`);
+    }
+
+    res.status(200).json({
+      success: true,
+      data: log,
+    });
+  }
+);
 
 
