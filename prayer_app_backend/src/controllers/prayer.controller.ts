@@ -262,4 +262,23 @@ export const getPrayerLogForDate = asyncHandler(
   }
 );
 
+// ── @desc   Get weekly prayer logs
+// ── @route  GET /api/v1/prayer/log/weekly
+// ── @access Private
+export const getWeeklyLogs = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    if (!req.userId) {
+      throw BadRequest("User not authenticated.");
+    }
+
+    const userId = new mongoose.Types.ObjectId(req.userId);
+    const logs   = await getWeeklyPrayerLogs(userId);
+
+    res.status(200).json({
+      success: true,
+      count: logs.length,
+      data: logs,
+    });
+  }
+);
 
