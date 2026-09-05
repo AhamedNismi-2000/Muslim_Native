@@ -300,3 +300,31 @@ export const getStats = asyncHandler(
   }
 );
 
+// ── @desc   Get Qibla direction
+// ── @route  GET /api/v1/prayer/qibla
+// ── @access Private
+export const getQibla = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    if (!req.user) {
+      throw BadRequest("User not found in request.");
+    }
+
+    const direction = getQiblaDirection(
+      req.user.location.latitude,
+      req.user.location.longitude
+    );
+
+    res.status(200).json({
+      success: true,
+      data: {
+        direction,
+        latitude:  req.user.location.latitude,
+        longitude: req.user.location.longitude,
+        city:      req.user.location.city,
+        country:   req.user.location.country,
+      },
+    });
+  }
+);
+
+
