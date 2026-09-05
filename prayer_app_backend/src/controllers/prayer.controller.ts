@@ -159,4 +159,78 @@ export const getCustomLocationTimes = asyncHandler(
   }
 );
 
+// ── @desc   Mark a prayer as completed or missed
+// ── @route  PUT /api/v1/prayer/log/mark
+// ── @access Private
+export const markPrayer = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { prayerName, status, date } = req.body;
+
+    // Validate prayer name
+    if (!prayerName || !VALID_PRAYERS.includes(prayerName)) {
+      throw BadRequest(
+        `Invalid prayer name. Must be one of: ${VALID_PRAYERS.join(", ")}`
+      );
+    }
+
+    // Validate status
+    if (!status || !["completed", "missed"].includes(status)) {
+      throw BadRequest("Status must be either 'completed' or 'missed'.");
+    }
+
+    const targetDate = date || getTodayString();
+
+    // Validate date format
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(targetDate)) {
+      throw BadRequest("Invalid date format. Use YYYY-MM-DD.");
+    }
+
+    if (!req.userId) {
+      throw BadRequest("User not authenticated.");
+    }
+
+    const userId = new mongoose.Types.ObjectId(req.userId);
+
+    const updatedLog = await markPrayerStatus(
+      userId,
+      targetDate,
+      prayerName as PrayerName,
+      status
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `${prayerName} marked as ${status}.`,
+      data: updatedLog,
+    });
+  }
+);
+// ── @desc   Get prayer log for today
+// ── @route  GET /api/v1/prayer/log/today
+// ── @access Private
+export const getTodayLog = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    if (!req.userId) {
+      throw BadRequest("User not authenticated.");
+    }
+
+    const userId = new mongoose.Types.ObjectId(req.userId);
+    const today  = getTodayString();
+
+    const log = await getPrayerLogByDate(userId, today);
+
+    if (!log) {
+      throw NotFound(
+        "No prayer log found for today. It will be created automatically at midnight."
+      );
+    }
+
+    res.status(200).json({
+      success: true,
+      data: log,
+    });
+  }
+);
+
 
