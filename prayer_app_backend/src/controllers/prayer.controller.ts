@@ -360,4 +360,54 @@ export const getCustomQibla = asyncHandler(
   }
 );
 
+// ── @desc   Update user location and reschedule notifications
+// ── @route  PUT /api/v1/prayer/location
+// ── @access Private
+export const updateLocation = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { latitude, longitude, city, country, timezone } = req.body;
+
+    if (
+      latitude === undefined ||
+      longitude === undefined ||
+      !city ||
+      !country
+    ) {
+      throw BadRequest(
+        "Latitude, longitude, city, and country are required."
+      );
+    }
+
+    if (!req.user || !req.userId) {
+      throw BadRequest("User not authenticated.");
+    }
+
+    // Update user location
+    req.user.location = {
+      latitude,
+      longitude,
+      city,
+      country,
+      timezone: timezone || req.user.location.timezone,
+    };
+
+    await req.user.save();
+
+    // Reschedule notifications for new location
+    const userId = new mongoose.Types.ObjectId(req.userId);
+    await rescheduleUserNotifications(userId);
+
+    // Return fresh prayer times for new location
+    const prayerData = getTodayPrayerTimes(req.user);
+
+    res.status(200).json({
+      success: true,
+      message: "Location updated and notifications rescheduled.",
+      data: {
+        location:    req.user.location,
+        prayerTimes: prayerData,
+      },
+    });
+  }
+)
 
