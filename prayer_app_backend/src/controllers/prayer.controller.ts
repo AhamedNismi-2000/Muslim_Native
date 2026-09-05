@@ -328,3 +328,36 @@ export const getQibla = asyncHandler(
 );
 
 
+// ── @desc   Get Qibla for custom coordinates
+// ── @route  POST /api/v1/prayer/qibla/custom
+// ── @access Private
+export const getCustomQibla = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    const { latitude, longitude } = req.body;
+
+    if (latitude === undefined || longitude === undefined) {
+      throw BadRequest("Latitude and longitude are required.");
+    }
+
+    if (latitude < -90 || latitude > 90) {
+      throw BadRequest("Latitude must be between -90 and 90.");
+    }
+
+    if (longitude < -180 || longitude > 180) {
+      throw BadRequest("Longitude must be between -180 and 180.");
+    }
+
+    const direction = getQiblaDirection(latitude, longitude);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        direction,
+        latitude,
+        longitude,
+      },
+    });
+  }
+);
+
+
