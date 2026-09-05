@@ -281,4 +281,22 @@ export const getWeeklyLogs = asyncHandler(
     });
   }
 );
+// ── @desc   Get prayer statistics
+// ── @route  GET /api/v1/prayer/stats
+// ── @access Private
+export const getStats = asyncHandler(
+  async (req: Request, res: Response): Promise<void> => {
+    if (!req.userId) {
+      throw BadRequest("User not authenticated.");
+    }
+
+    const userId = new mongoose.Types.ObjectId(req.userId);
+    const stats  = await getPrayerStats(userId);
+
+    res.status(200).json({
+      success: true,
+      data: stats,
+    });
+  }
+);
 
