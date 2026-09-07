@@ -66,3 +66,45 @@ export const updateProfile = asyncHandler(async (req: Request, res: Response) =>
     data: user,
   });
 });
+
+/**
+ * @desc    Update user's location (used to recalculate prayer times)
+ * @route   PATCH /api/users/me/location
+ * @access  Private
+ */
+export const updateLocation = asyncHandler(async (req: Request, res: Response) => {
+  const { latitude, longitude, city, country } = req.body;
+
+  if (latitude === undefined || longitude === undefined) {
+    throw AppError.BadRequest('Latitude and longitude are required');
+  }
+
+  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+    throw AppError.BadRequest('Invalid latitude or longitude values');
+  }
+
+  const user = await User.findOneAndUpdate(
+    { _id: req.userId, isActive: true },
+    {
+      $set: {
+        location: {
+          latitude,
+          longitude,
+          city: city ?? undefined,
+          country: country ?? undefined,
+        },
+      },
+    },
+    { new: true, runValidators: true }
+  ).select('-__v');
+
+  if (!user) {
+    throw AppError.NotFound('User not found');
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'Location updated successfully',
+    data: user,
+  });
+});
