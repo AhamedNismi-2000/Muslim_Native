@@ -108,3 +108,40 @@ export const updateLocation = asyncHandler(async (req: Request, res: Response) =
     data: user,
   });
 });
+
+
+/**
+ * @desc    Register or update an FCM token for the current device
+ * @route   POST /api/users/me/fcm-token
+ * @access  Private
+ */
+export const addFcmToken = asyncHandler(async (req: Request, res: Response) => {
+  const { token, deviceId, platform } = req.body;
+
+  if (!token || !deviceId || !platform) {
+    throw AppError.BadRequest('token, deviceId, and platform are required');
+  }
+
+  if (!['ios', 'android'].includes(platform)) {
+    throw AppError.BadRequest('platform must be either "ios" or "android"');
+  }
+
+  const user = await User.findOne({ _id: req.userId, isActive: true });
+
+  if (!user) {
+    throw AppError.NotFound('User not found');
+  }
+
+  // Remove any existing entry for this device, then push the fresh token.
+  // Keeps the array free of stale duplicates when a device's token rotates.
+  user.fcmTokens = user.fcmTokens.filter((t: any) => t.deviceId !== deviceId);
+  user.fcmTokens.push({ token, deviceId, platform, updatedAt: new Date() });
+
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'FCM token registered',
+    data: { fcmTokens: user.fcmTokens },
+  });
+});
