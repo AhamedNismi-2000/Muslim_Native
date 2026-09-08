@@ -111,7 +111,7 @@ export const updateLocation = asyncHandler(async (req: Request, res: Response) =
 
 
 /**
- * @desc    Register or update an FCM token for the current device
+ * @desc    Register or update an FCM toen for the current device
  * @route   POST /api/users/me/fcm-token
  * @access  Private
  */
