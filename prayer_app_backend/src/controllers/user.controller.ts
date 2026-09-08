@@ -145,3 +145,37 @@ export const addFcmToken = asyncHandler(async (req: Request, res: Response) => {
     data: { fcmTokens: user.fcmTokens },
   });
 });
+
+/**
+ * @desc    Remove an FCM token (e.g. on logout from a specific device)
+ * @route   DELETE /api/users/me/fcm-token/:deviceId
+ * @access  Private
+ */
+export const removeFcmToken = asyncHandler(async (req: Request, res: Response) => {
+  const { deviceId } = req.params;
+
+  if (!deviceId) {
+    throw AppError.BadRequest('deviceId is required');
+  }
+
+  const user = await User.findOne({ _id: req.userId, isActive: true });
+
+  if (!user) {
+    throw AppError.NotFound('User not found');
+  }
+
+  const originalLength = user.fcmTokens.length;
+  user.fcmTokens = user.fcmTokens.filter((t: any) => t.deviceId !== deviceId);
+
+  if (user.fcmTokens.length === originalLength) {
+    throw AppError.NotFound('No FCM token found for this device');
+  }
+
+  await user.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'FCM token removed',
+    data: { fcmTokens: user.fcmTokens },
+  });
+});
