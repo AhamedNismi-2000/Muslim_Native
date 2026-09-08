@@ -179,3 +179,31 @@ export const removeFcmToken = asyncHandler(async (req: Request, res: Response) =
     data: { fcmTokens: user.fcmTokens },
   });
 });
+
+/**
+ * @desc    Deactivate (soft delete) the authenticated user's account
+ * @route   DELETE /api/users/me
+ * @access  Private
+ */
+export const deactivateAccount = asyncHandler(async (req: Request, res: Response) => {
+  const user = await User.findOneAndUpdate(
+    { _id: req.userId, isActive: true },
+    {
+      $set: {
+        isActive: false,
+        deactivatedAt: new Date(),
+        fcmTokens: [], // wipe device tokens so cron jobs stop notifying this account
+      },
+    },
+    { new: true }
+  );
+
+  if (!user) {
+    throw AppError.NotFound('User not found');
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'Account deactivated successfully',
+  });
+});
