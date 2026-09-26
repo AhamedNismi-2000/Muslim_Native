@@ -8,7 +8,7 @@ import initializeFirebase from "./config/firebase";
 
 // Routes
 import authRoutes from "./routes/auth.routes";
-import prayerRoutes from "./routes/prayer.routes";
+import prayerRoutes from "./routes/prayer.routes.ts";
 import userRoutes from "./routes/user.routes";
 import notificationRoutes from "./routes/notification.routes";
 import { initializeCronJobs, stopAllCronJobs } from "./services/cronService";
