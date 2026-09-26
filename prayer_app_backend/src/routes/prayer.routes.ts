@@ -95,3 +95,15 @@ router.get("/log/:date", prayerLogLimiter, getPrayerLogForDate);
 // @desc   Mark a prayer as completed or missed
 // @access Private
 router.put("/log/mark", prayerLogLimiter, markPrayer);
+
+
+// ════════════════════════════════════════════════════════
+// STATISTICS
+// ════════════════════════════════════════════════════════
+
+// @route  GET /api/v1/prayer/stats
+// @desc   Get prayer statistics (streak, completion rate)
+// @access Private
+router.get("/stats", prayerLimiter, getStats);
+
+export default router;
