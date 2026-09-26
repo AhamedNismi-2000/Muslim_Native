@@ -61,3 +61,37 @@ router.get("/qibla", prayerLimiter, getQibla);
 // @desc   Get Qibla direction for custom coordinates
 // @access Private
 router.post("/qibla/custom", prayerLimiter, getCustomQibla);
+
+
+// ════════════════════════════════════════════════════════
+// LOCATION
+// ════════════════════════════════════════════════════════
+
+// @route  PUT /api/v1/prayer/location
+// @desc   Update user location and reschedule notifications
+// @access Private
+router.put("/location", prayerLimiter, updateLocation);
+
+// ════════════════════════════════════════════════════════
+// PRAYER LOGS
+// ════════════════════════════════════════════════════════
+
+// @route  GET /api/v1/prayer/log/today
+// @desc   Get today's prayer log
+// @access Private
+router.get("/log/today", prayerLogLimiter, getTodayLog);
+
+// @route  GET /api/v1/prayer/log/weekly
+// @desc   Get last 7 days prayer logs
+// @access Private
+router.get("/log/weekly", prayerLogLimiter, getWeeklyLogs);
+
+// @route  GET /api/v1/prayer/log/:date
+// @desc   Get prayer log for a specific date (YYYY-MM-DD)
+// @access Private
+router.get("/log/:date", prayerLogLimiter, getPrayerLogForDate);
+
+// @route  PUT /api/v1/prayer/log/mark
+// @desc   Mark a prayer as completed or missed
+// @access Private
+router.put("/log/mark", prayerLogLimiter, markPrayer);
